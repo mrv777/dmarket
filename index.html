@@ -85,6 +85,9 @@
                     <div id="dropdownList" class="dropdown-menu" aria-labelledby="navbarDropdown">
                     </div>
                   </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="#" data-toggle="modal" data-target="#aboutModal">About</a>
+                  </li>
               </ul>
 
               <form class="form-inline" action="/">
@@ -98,7 +101,29 @@
         Loading...
   	</div>
 
-    <!-- Modal -->
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1" role="dialog" aria-labelledby="aboutModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="aboutModalLabel">About</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>d-Market is a portal to the Decentralized Marketplace on Ardor.  When purchasing it will generate a QR code to be signed with the Ardor Lite App or SIGRO app(Coming Soon)</p>
+            <p>It also provides an escrow service for a 5 IGNIS fee. Funds will be sent to an escrow account and then forwarded with a pending phased transaction to the seller requiring the buyer to approve once they have the good.  If there is an issue, the buyer has 14 days to notify the escrow account to lock the funds or else they are released to the seller.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary">Save changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buy Modal -->
     <div class="modal fade" id="buyModal" tabindex="-1" role="dialog" aria-labelledby="buyModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -118,6 +143,12 @@
                 <label for="buyingInfo">Any necessary information</label>
                 <input type="text" class="form-control" id="buyingInfo" placeholder="Size, color, etc.">
               </div>
+              <div class="form-check">
+                  <input class="form-check-input" type="checkbox" checked value="escrow" id="escrowBox">
+                  <label class="form-check-label" for="escrowBox">
+                    Buyer Protection
+                  </label>
+                </div>
               Price: <span id="goodPrice"></span><br />
               Fees: <span id="goodFee"></span><br />
               Total: <span id="goodTotal"></span><br />
@@ -125,7 +156,7 @@
             </div>
 
             <div id="scanInfo">
-                Scan this QR code with <a href="https://squirrelsystems.net/ardor/" target="_blank">Ardor Lite</a> or SIGBRO(Coming Soon) to pay with buyer protection service<a href="#" data-toggle="tooltip" data-placement="top" data-html="true" title="Funds will be sent to an escrow account with a pending phased transaction to the seller requiring either the buyer to approve once they have the good or the escrow account to approve.  Otherwise the funds become locked until the dispute is resolved or 45 days pass">*</a>
+                Scan this QR code with <a href="https://squirrelsystems.net/ardor/" target="_blank">Ardor Lite</a> or SIGBRO(Coming Soon)
             </div>
             <div id="goodQR"></div>
           </div>
@@ -144,7 +175,8 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
     <script>
-        function getTransaction( goodID, goodPrice ) {
+        let goodPrice, goodFee, goodID;
+        function getTransaction( goodID, goodTotalPrice ) {
             let sendAccount = document.getElementById("sendAccount").value;
             if (sendAccount.length > 20 && sendAccount.length < 28) {
                 let buyingInfo = document.getElementById("buyingInfo").value;
@@ -154,14 +186,23 @@
                 let pKeyUrl = "https://testnode"+node_number+".ardor.tools/nxt?requestType=getAccount&account="+sendAccount;
                 $.getJSON(pKeyUrl, function(result){
                     if (result['publicKey']) {
-                        let url = "https://testnode"+node_number+".ardor.tools/nxt?requestType=sendMoney";
-                        var jqxhr = $.post( url, { chain: 2, deadline: 30, amountNQT: goodPrice, messageIsPrunable: true, message: '{ "contract": "Escrow", "params": { "goods": "'+goodID+'", "buyerMsg": "'+buyingInfo+'" }}', recipient: "ARDOR-64L4-C4H9-Z9PU-9YKDT", publicKey: result['publicKey'] })
-                        //var jqxhr = $.post( url, { chain: 2, priceNQT: goodPrice, goods: goodID, quantity: 1, publicKey: result['publicKey'] })
-                          .done(function( results ) {
+                        let url, jqxhr;
+                        if ($("#escrowBox").is(':checked')) {
+                            url = "https://testnode"+node_number+".ardor.tools/nxt?requestType=sendMoney";
+                            jqxhr = $.post( url, { chain: 2, deadline: 30, amountNQT: goodTotalPrice, messageIsPrunable: true, message: '{ "contract": "Escrow", "params": { "goods": "'+goodID+'", "buyerMsg": "'+buyingInfo+'" }}', recipient: "ARDOR-64L4-C4H9-Z9PU-9YKDT", publicKey: result['publicKey'] })
+                        } else {
+                            let deliveryDeadlineTime = Math.trunc(new Date().getTime()/1000 - new Date("2017-12-26T14:00:00Z").getTime()/1000 + 345600);
+                            url = "https://testnode"+node_number+".ardor.tools/nxt?requestType=dgsPurchase";
+                            jqxhr = $.post( url, { chain: 2, deadline: 30, priceNQT: goodTotalPrice, messageIsPrunable: true, message: '{ "buyerMessage": "'+buyingInfo+'" }', goods: goodID, quantity: "1", deliveryDeadlineTimestamp: deliveryDeadlineTime, publicKey: result['publicKey'] })
+                        }
+
+                        //var jqxhr = $.post( url, { chain: 2, priceNQT: goodTotalPrice, goods: goodID, quantity: 1, publicKey: result['publicKey'] })
+                        jqxhr.done(function( results ) {
                             $('#paymentInfo').hide();
                             $('#scanInfo').show();
-                            let resultJson = JSON.parse(results);console.log(results);
+                            let resultJson = JSON.parse(results);
                             document.getElementById("goodQR").innerHTML = "<img src='https://chart.googleapis.com/chart?chs=400x400&cht=qr&chl="+resultJson['unsignedTransactionBytes']+"||"+JSON.stringify(resultJson['transactionJSON']['attachment'])+"&choe=UTF-8&chld=Q' title='Payment' />";
+                            // document.getElementById("sigbroQR").innerHTML = "<img src='https://chart.googleapis.com/chart?chs=400x400&cht=qr&chl="+resultJson['unsignedTransactionBytes']+"||"+JSON.stringify(resultJson['transactionJSON']['attachment'])+"&choe=UTF-8&chld=Q' title='Payment' />";
                           })
                           .fail(function() {
                             alert( "error" );
@@ -169,6 +210,7 @@
                           .always(function() {
                             console.log( "finished" );
                           });
+
                       } else {
                         alert("Could not get the account's Public Key.  Please verify it")
                       }
@@ -179,27 +221,49 @@
 
         }
 
+        $("#escrowBox").change(function () {
+            if ($(this).is(':checked')) {//this is true if the switch is on
+                goodFee = 500000000
+                setPrice();
+            }
+            else {
+                goodFee = 0
+                setPrice();
+            }
+        });
+
         $('#buyModal').on('show.bs.modal', function(e) { 
             $('#paymentInfo').show();
             $('#scanInfo').hide();
             document.getElementById("sendAccount").value = "";
             document.getElementById("goodQR").innerHTML = "";
 
-            let goodPrice = $(e.relatedTarget).data('good-price');
-            let goodFee = 500000000
-            $(e.currentTarget).find('#goodPrice').text(goodPrice/100000000);
-            $(e.currentTarget).find('#goodFee').text(goodFee/100000000);
-            $(e.currentTarget).find('#goodTotal').text((goodPrice+goodFee)/100000000);
+            goodPrice = $(e.relatedTarget).data('good-price');
+            if (goodPrice > 500000000) {
+                $("#escrowBox").prop( "checked", true );
+                goodFee = 500000000;
+            } else {
+                $("#escrowBox").prop( "checked", false );
+                goodFee = 0;
+            }
+
             
+            $(e.currentTarget).find('#goodPrice').text(goodPrice/100000000);
 
             let goodTitle = $(e.relatedTarget).data('good-title');
             $(e.currentTarget).find('#goodID').text(goodTitle);
 
-            let goodID = $(e.relatedTarget).data('good-id');
-            $('#generatePayment').removeAttr('onclick');
-            $('#generatePayment').attr('onClick', 'getTransaction("'+goodID+'", "'+(goodPrice+goodFee)+'");');
+            goodID = $(e.relatedTarget).data('good-id');
+            setPrice();
             
         });
+
+        function setPrice(){
+            $('#buyModal').find('#goodFee').text(goodFee/100000000);
+            $('#buyModal').find('#goodTotal').text((goodPrice+goodFee)/100000000);
+            $('#generatePayment').removeAttr('onclick');
+            $('#generatePayment').attr('onClick', 'getTransaction("'+goodID+'", "'+(goodPrice+goodFee)+'");');
+        }
 
         $(function () {
           $('[data-toggle="tooltip"]').tooltip()
