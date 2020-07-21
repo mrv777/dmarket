@@ -88,6 +88,9 @@
                   <li class="nav-item">
                     <a class="nav-link" href="#" data-toggle="modal" data-target="#aboutModal">About</a>
                   </li>
+                  <li class="nav-item">
+                    <a class="nav-link" id="loginButton" href="#" data-toggle="modal" data-target="#loginModal">Login</a>
+                  </li>
               </ul>
 
               <form class="form-inline" action="/">
@@ -100,6 +103,54 @@
   	<div id="container" class="container pt-2">
         Loading...
   	</div>
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="loginModalLabel">Login</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+                <label for="loginAccount">Account Address</label>
+                <input type="text" class="form-control" id="loginAccount" placeholder="ARDOR-XXXX-XXXX-XXXX-XXXXX">
+              </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" id="login" class="btn btn-primary" onclick="login()">Login</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account Modal -->
+    <div class="modal fade" id="accountModal" tabindex="-1" role="dialog" aria-labelledby="accountModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="accountModalLabel">Account</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+                <label for="marketAccount">Account Address</label>
+                <input type="text" readonly="" class="form-control" id="marketAccount" placeholder="ARDOR-XXXX-XXXX-XXXX-XXXXX">
+              </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" id="logout" class="btn btn-primary" onclick="logout()">Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- About Modal -->
     <div class="modal fade" id="aboutModal" tabindex="-1" role="dialog" aria-labelledby="aboutModalLabel" aria-hidden="true">
@@ -117,7 +168,6 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-primary">Save changes</button>
           </div>
         </div>
       </div>
@@ -146,7 +196,7 @@
               <div class="form-check">
                   <input class="form-check-input" type="checkbox" checked value="escrow" id="escrowBox">
                   <label class="form-check-label" for="escrowBox">
-                    Buyer Protection
+                    Buyer Protection (<a href="#" data-toggle="tooltip" data-placement="top" data-html="true" title="Funds will be sent to an escrow account and then forwarded with a pending phased transaction to the seller requiring the buyer to approve once they have the good.  If there is an issue, the buyer has 14 days to notify the escrow account to lock the funds or else they are released to the seller.">?</a>)
                   </label>
                 </div>
               Price: <span id="goodPrice"></span><br />
@@ -221,6 +271,21 @@
 
         }
 
+        function login () {
+            let loginAccount = document.getElementById("loginAccount").value;
+            if (loginAccount.length > 20 && loginAccount.length < 28) {
+                localStorage.setItem("dMarket_account", loginAccount);
+                location.reload();
+            } else {
+                alert("Invalid Address");
+            }
+        }
+
+        function logout () {
+            localStorage.removeItem("dMarket_account");
+            location.reload();
+        }
+
         $("#escrowBox").change(function () {
             if ($(this).is(':checked')) {//this is true if the switch is on
                 goodFee = 500000000
@@ -235,7 +300,7 @@
         $('#buyModal').on('show.bs.modal', function(e) { 
             $('#paymentInfo').show();
             $('#scanInfo').hide();
-            document.getElementById("sendAccount").value = "";
+            document.getElementById("buyingInfo").value = "";
             document.getElementById("goodQR").innerHTML = "";
 
             goodPrice = $(e.relatedTarget).data('good-price');
@@ -267,6 +332,13 @@
 
         $(function () {
           $('[data-toggle="tooltip"]').tooltip()
+
+          if (localStorage.getItem("dMarket_account")) {
+            document.getElementById("loginButton").innerHTML = localStorage.getItem("dMarket_account");
+            $('#loginButton').attr("data-target", "#accountModal");
+            $('#marketAccount').val(localStorage.getItem("dMarket_account"));
+            $('#sendAccount').val(localStorage.getItem("dMarket_account"));
+          }
 
           let node_number=Math.floor((Math.random() * 8) + 1);
           node_number = 7;
